@@ -68,7 +68,7 @@ st.markdown(
 
 st.markdown("Analyze emissions trends by country, year, and type of emissions")
 
-st.markdown("Choose the type of analysis you would like to conduct with the dropdown from the left pane")
+st.markdown("Choose the type of analysis you would like to conduct using the drop down on the left pane")
 
 # Page Navigation
 page = st.sidebar.selectbox("Choose Analysis Type", ["Emmission Analysis", "Temperature Analysis", "Correlation Analysis","Data Dictionary and Sources"])
