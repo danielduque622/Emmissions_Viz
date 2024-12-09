@@ -5,17 +5,12 @@ import squarify
 import numpy as np
 
 # Load the data
-@st.cache_data
-def load_data(file_path):
-    df = pd.read_csv(file_path)
-# Clean and prepare data
-    df = df.rename(columns=lambda x: x.strip())
-    df = df.rename(columns=lambda x: x.replace("_", " "))
-    return df
-
 file_path = 'data/owid-co2-data.csv'
-df = load_data(file_path)
+df = pd.read_csv(file_path)
 
+# Clean and prepare data
+df = df.rename(columns=lambda x: x.strip())
+df = df.rename(columns=lambda x: x.replace("_", " "))
 emission_columns = ["co2", "co2 per capita", "coal co2", "coal co2 per capita", 
                     "consumption co2", "consumption co2 per capita", "flaring co2", 
                     "flaring co2 per capita", "gas co2", "gas co2 per capita", 
@@ -28,24 +23,6 @@ emission_columns_2 = ["co2", "coal co2", "consumption co2", "flaring co2",
 
 temp_columns = ["temperature change from ghg","temperature change from ch4","temperature change from co2",
 "temperature change from n2o"]
-
-#columns for correlations
-corr_columns = ["gdp","population","co2 growth abs","co2", "co2 per capita", "coal co2", "coal co2 per capita", 
-                    "consumption co2", "consumption co2 per capita", "flaring co2", 
-                    "flaring co2 per capita", "gas co2", "gas co2 per capita", 
-                    "methane", "methane per capita", "nitrous oxide", 
-                    "nitrous oxide per capita", "oil co2", "oil co2 per capita", 
-                    "other industry co2"]
-    
-
-if "Select Countries" not in st.session_state:
-    st.session_state.countries = ["World"]
-if "Select Emission Type" not in st.session_state:
-    st.session_state.emission_type = emission_columns[0]
-if "Select Year Range" not in st.session_state:
-    st.session_state.years = (2000, 2020)
-if "Select Columns to Analyze" not in st.session_state:
-    st.session_state.corr_coumns = corr_columns[:3]
 
 # App Title
 st.markdown(
@@ -66,55 +43,46 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown("Analyze emissions trends by country, year, and type of emissions")
-
-st.markdown("Choose the type of analysis you would like to conduct using the drop down on the left pane")
+st.markdown("Analyze emissions trends by country, year, and type of emissions.")
 
 # Page Navigation
 page = st.sidebar.selectbox("Choose Analysis Type", ["Emmission Analysis", "Temperature Analysis", "Correlation Analysis","Data Dictionary and Sources"])
 
 #emmission analysis page
 if page == "Emmission Analysis":
-    st.markdown("Filters")
+    # Filters (Horizontal Layout)
+    st.markdown("### Filters")
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
-        countries = st.multiselect(
-            "Select Countries", 
-            df["country"].unique()
-            , default=st.session_state.get("countries", ["World"]))
+        countries = st.multiselect("Select Countries", df["country"].unique(), default=["World"])
     with col2:
         emission_type = st.selectbox("Select Emission Type", options=emission_columns, index=0)
     with col3:
         years = st.slider("Select Year Range", int(df["year"].min()), int(df["year"].max()), (2000, 2020))
 
-
     # Filtered Data
-    @st.cache_data
-    def filter_data(df, countries, years):
-        return df[(df["country"].isin(countries)) & (df["year"].between(*years))]
-
-    filtered_df = filter_data(df, st.session_state.countries, st.session_state.years)
+    filtered_df = df[(df["country"].isin(countries)) & (df["year"].between(*years))]
 
     # Line Chart
     st.subheader("Emissions Over Time")
     fig, ax = plt.subplots(facecolor='none')
-    for country in  st.session_state.countries:
+    for country in countries:
         country_data = filtered_df[filtered_df["country"] == country]
-        ax.plot(country_data["year"], country_data[st.session_state.emission_type], label=country)
-    ax.set_title(f"{st.session_state.emission_type} Trends ({st.session_state.years[0]}-{st.session_state.years[1]})")
+        ax.plot(country_data["year"], country_data[emission_type], label=country)
+    ax.set_title(f"{emission_type} Trends ({years[0]}-{years[1]})")
     ax.set_xlabel("Year")
     ax.set_ylabel("Emissions")
     ax.legend()
-    ax.set_title("Time Series Chart", color='white')  
-    ax.set_xlabel("Time", color='white')  
-    ax.set_ylabel("Million Tonnes", color='white')  
-    ax.tick_params(axis='x', colors='white')  
-    ax.tick_params(axis='y', colors='white') 
+    ax.set_title("Time Series Chart", color='white')  # White title
+    ax.set_xlabel("Time", color='white')  # White x-axis label
+    ax.set_ylabel("Million Tonnes", color='white')  # White y-axis label
+    ax.tick_params(axis='x', colors='white')  # White x-ticks
+    ax.tick_params(axis='y', colors='white')  # White y-ticks
     fig.patch.set_alpha(0)  # Transparent figure background
     ax.set_facecolor('none')  # Transparent plot background
     st.pyplot(fig)
 
-    # White space line
+        # White space line
     st.markdown(
         """
         <hr style="border: 1.5px solid white; margin: 20px 0;">
@@ -124,24 +92,24 @@ if page == "Emmission Analysis":
 
     # Bar Chart
     st.subheader("Country Comparison")
-    avg_emissions = filtered_df.groupby("country")[st.session_state.emission_type].mean().sort_values()
+    avg_emissions = filtered_df.groupby("country")[emission_type].mean().sort_values()
     if avg_emissions.empty:
         st.warning("No data available for the selected filters.")
     else:
         fig, ax = plt.subplots(facecolor='none')
-    ax.set_title("Category Values", color='white')  
-    ax.set_xlabel("Categories", color='white')  
-    ax.set_ylabel("Million Tonnes", color='white')  
-    ax.tick_params(axis='x', colors='white', rotation=0)  
-    ax.tick_params(axis='y', colors='white')  
+    ax.set_title("Category Values", color='white')  # White title
+    ax.set_xlabel("Categories", color='white')  # White x-axis label
+    ax.set_ylabel("Million Tonnes", color='white')  # White y-axis label
+    ax.tick_params(axis='x', colors='white', rotation=0)  # White x-ticks
+    ax.tick_params(axis='y', colors='white')  # White y-ticks
     fig.patch.set_alpha(0)  # Transparent figure background
     ax.set_facecolor('none')  # Transparent plot background
     avg_emissions.plot(kind="bar", ax=ax)
-    ax.set_title(f"Average {st.session_state.emission_type} Emissions ({st.session_state.years[0]}-{st.session_state.years[1]})")
+    ax.set_title(f"Average {emission_type} Emissions ({years[0]}-{years[1]})")
     ax.set_xlabel("Emissions")
     st.pyplot(fig)
 
-    # White space line
+        # White space line
     st.markdown(
         """
         <hr style="border: 1.5px solid white; margin: 20px 0;">
@@ -181,7 +149,7 @@ if page == "Emmission Analysis":
     ax.axis('off')  # Turn off axes
     st.pyplot(fig)
 
-    # White space line
+        # White space line
     st.markdown(
         """
         <hr style="border: 1.5px solid white; margin: 20px 0;">
@@ -204,7 +172,7 @@ if page == "Emmission Analysis":
 
 # Temp analysis Page
 if page == "Temperature Analysis":
-    st.markdown("Filters")
+    st.markdown("### Filters")
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         countries = st.multiselect("Select Countries", df["country"].unique(), default=["World"])
@@ -214,32 +182,28 @@ if page == "Temperature Analysis":
     emission_type = st.selectbox("Select Emission Type", options=temp_columns, index=0)
 
     # Filtered Data
-    @st.cache_data
-    def filter_data(df, countries, years):
-        return df[(df["country"].isin(countries)) & (df["year"].between(*years))]
-
-    filtered_df = filter_data(df, st.session_state.countries, st.session_state.years)
+    filtered_df = df[(df["country"].isin(countries)) & (df["year"].between(*years))]
 
     # Line Chart
     st.subheader("Temperature Change Over Time")
     fig, ax = plt.subplots(facecolor='none')
-    for country in st.session_state.countries:
+    for country in countries:
         country_data = filtered_df[filtered_df["country"] == country]
         ax.plot(country_data["year"], country_data[emission_type], label=country)
-    ax.set_title(f"{emission_type} Trends ({st.session_state.years[0]}-{st.session_state.years[1]})")
+    ax.set_title(f"{emission_type} Trends ({years[0]}-{years[1]})")
     ax.set_xlabel("Year")
     ax.set_ylabel("Emissions")
     ax.legend()
-    ax.set_title("Time Series Chart", color='white')  
-    ax.set_xlabel("Time", color='white')  
-    ax.set_ylabel("°C", color='white')  
-    ax.tick_params(axis='x', colors='white')  
-    ax.tick_params(axis='y', colors='white')  
+    ax.set_title("Time Series Chart", color='white')  # White title
+    ax.set_xlabel("Time", color='white')  # White x-axis label
+    ax.set_ylabel("°C", color='white')  # White y-axis label
+    ax.tick_params(axis='x', colors='white')  # White x-ticks
+    ax.tick_params(axis='y', colors='white')  # White y-ticks
     fig.patch.set_alpha(0)  # Transparent figure background
     ax.set_facecolor('none')  # Transparent plot background
     st.pyplot(fig)
 
-    # White space line
+        # White space line
     st.markdown(
         """
         <hr style="border: 1.5px solid white; margin: 20px 0;">
@@ -254,15 +218,15 @@ if page == "Temperature Analysis":
         st.warning("No data available for the selected filters.")
     else:
         fig, ax = plt.subplots(facecolor='none')
-    ax.set_title("Category Values", color='white')  
-    ax.set_xlabel("Categories", color='white')  
-    ax.set_ylabel("°C", color='white')  
-    ax.tick_params(axis='x', colors='white', rotation=0)  
-    ax.tick_params(axis='y', colors='white')  
-    fig.patch.set_alpha(0)  
-    ax.set_facecolor('none')  
+    ax.set_title("Category Values", color='white')  # White title
+    ax.set_xlabel("Categories", color='white')  # White x-axis label
+    ax.set_ylabel("°C", color='white')  # White y-axis label
+    ax.tick_params(axis='x', colors='white', rotation=0)  # White x-ticks
+    ax.tick_params(axis='y', colors='white')  # White y-ticks
+    fig.patch.set_alpha(0)  # Transparent figure background
+    ax.set_facecolor('none')  # Transparent plot background
     avg_emissions.plot(kind="bar", ax=ax)
-    ax.set_title(f"Average {emission_type} Emissions ({st.session_state.years[0]}-{st.session_state.years[1]})")
+    ax.set_title(f"Average {emission_type} Emissions ({years[0]}-{years[1]})")
     ax.set_xlabel("Emissions")
     st.pyplot(fig)
 
@@ -335,18 +299,25 @@ if page == "Data Dictionary and Sources":
 elif page == "Correlation Analysis":
     st.markdown("### Correlation Analysis")
 
-
+    #columns for correlations
+    corr_columns = ["gdp","population","co2 growth abs","co2", "co2 per capita", "coal co2", "coal co2 per capita", 
+                    "consumption co2", "consumption co2 per capita", "flaring co2", 
+                    "flaring co2 per capita", "gas co2", "gas co2 per capita", 
+                    "methane", "methane per capita", "nitrous oxide", 
+                    "nitrous oxide per capita", "oil co2", "oil co2 per capita", 
+                    "other industry co2"]
+    
     # Filters for Correlation Analysis
-    st.session_state.countries = st.multiselect("Select Countries", df["country"].unique(), default=["World"], key="corr_countries")
-    st.session_state.years = st.slider("Select Year Range", int(df["year"].min()), int(df["year"].max()), (2000, 2020), key="corr_years")
-    st.session_state.corr_coumns = st.multiselect("Select Columns to Analyze", corr_columns, default=corr_columns[:3])
+    countries_corr = st.multiselect("Select Countries", df["country"].unique(), default=["World"], key="corr_countries")
+    years_corr = st.slider("Select Year Range", int(df["year"].min()), int(df["year"].max()), (2000, 2020), key="corr_years")
+    selected_columns = st.multiselect("Select Columns to Analyze", corr_columns, default=corr_columns[:3])
 
     # Filtered Data for Correlation
-    filtered_corr_df = df[(df["country"].isin(st.session_state.countries)) & (df["year"].between(* st.session_state.years))]
+    filtered_corr_df = df[(df["country"].isin(countries_corr)) & (df["year"].between(*years_corr))]
 
     # Correlation Matrix
-    if len(st.session_state.corr_coumns) > 1:
-        correlation_matrix = filtered_corr_df[st.session_state.corr_coumns].corr()
+    if len(selected_columns) > 1:
+        correlation_matrix = filtered_corr_df[selected_columns].corr()
         st.write(correlation_matrix)
         fig, ax = plt.subplots()
         cax = ax.matshow(correlation_matrix, cmap="coolwarm")
@@ -354,10 +325,10 @@ elif page == "Correlation Analysis":
         cbar = plt.colorbar(cax)
         cbar.ax.yaxis.set_tick_params(color='white')
         plt.setp(plt.getp(cbar.ax, 'yticklabels'), color='white')
-        ax.set_xticks(np.arange(len(st.session_state.corr_coumns)))
-        ax.set_yticks(np.arange(len(st.session_state.corr_coumns)))
-        ax.set_xticklabels(st.session_state.corr_coumns, rotation=90, color='white')
-        ax.set_yticklabels(st.session_state.corr_coumns,color='white')
+        ax.set_xticks(np.arange(len(selected_columns)))
+        ax.set_yticks(np.arange(len(selected_columns)))
+        ax.set_xticklabels(selected_columns, rotation=90, color='white')
+        ax.set_yticklabels(selected_columns,color='white')
         # Set transparent background for figure and axes
         fig.patch.set_alpha(0)  # Transparent figure background
         ax.set_facecolor('none')  # Transparent axes background
